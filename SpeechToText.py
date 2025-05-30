@@ -34,9 +34,7 @@ def preprocess_audio(input_path, output_path=None, apply_filters=True):
         b, a = signal.butter(5, 80 / (sr / 2), 'highpass')
         audio = signal.filtfilt(b, a, audio)
 
-        # Spectral noise gating for additional noise reduction
-        # This is a simple implementation - more advanced options exist
-        # Split audio into frames
+        # Very simple Spectral noise gating for additional noise reduction
         frame_length = int(sr * 0.025)  # 25ms frames
         hop_length = int(sr * 0.010)  # 10ms hop
 
