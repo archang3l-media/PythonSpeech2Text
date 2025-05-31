@@ -11,3 +11,7 @@ Since I'm in way too many meetings and get way too many voice messages on instan
 - Wrap a nice API around everything
 - Make it so that I can "share" voice messages with it and get a transcription back some time later
 - Maybe even add bots for the messengers that take the voice messages, transcribe them, and notify me when transcriptions are available
+
+#### Requirements:
+- Except for the stuff in the requirements.txt
+  - FFMPEG
