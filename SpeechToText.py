@@ -1,5 +1,12 @@
 #!/bin/env python
 
+import os
+# Use static FFmpeg to avoid library compatibility issues
+static_ffmpeg_path = '/config/workspace/Benchmark/PythonSpeech2Text/libs/ffmpeg-7.0.2-amd64-static'
+os.environ['PATH'] = f"{static_ffmpeg_path}:{os.environ.get('PATH', '')}"
+os.environ['FFMPEG_BINARY'] = f"{static_ffmpeg_path}/ffmpeg"
+os.environ['FFPROBE_BINARY'] = f"{static_ffmpeg_path}/ffprobe"
+
 import time
 from pathlib import Path
 import torch
@@ -25,7 +32,6 @@ def preprocess_audio(input_path, output_path=None, apply_filters=True):
     print("Loading audio for preprocessing...")
     # Load the audio file
     audio, sr = librosa.load(input_path, sr=None)
-
     if apply_filters:
         print("Applying audio enhancement filters...")
 
@@ -96,9 +102,9 @@ try:
     total_runtime = time.time()
     start_time = time.time()
     print("Preprocessing audio...")
-    processing_time = time.time() - start_time
     temp_processed_path = os.path.join(os.path.dirname(input_path), "processed_audio.wav")
     audio, sr = preprocess_audio(input_path, temp_processed_path)
+    processing_time = time.time() - start_time
     print(f"Audio preprocessed in {processing_time:.2f} seconds.")
 
     # Perform transcription with Whisper
