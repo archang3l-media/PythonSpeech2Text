@@ -1,3 +1,8 @@
+# For nvidia use
+--extra-index-url https://download.pytorch.org/whl/cu128
+# for AMD use
+# --extra-index-url https://download.pytorch.org/whl/rocm6.3
+# For Mac comment out all extra index urls
 openai-whisper
 librosa
 numpy
