@@ -1,12 +1,5 @@
 #!/bin/env python
 
-import os
-# Use static FFmpeg to avoid library compatibility issues
-static_ffmpeg_path = '/config/workspace/Benchmark/PythonSpeech2Text/libs/ffmpeg-7.0.2-amd64-static'
-os.environ['PATH'] = f"{static_ffmpeg_path}:{os.environ.get('PATH', '')}"
-os.environ['FFMPEG_BINARY'] = f"{static_ffmpeg_path}/ffmpeg"
-os.environ['FFPROBE_BINARY'] = f"{static_ffmpeg_path}/ffprobe"
-
 import time
 from pathlib import Path
 import torch
@@ -17,6 +10,7 @@ import numpy as np
 import os.path
 import soundfile as sf
 from scipy import signal
+import psutil
 
 
 def preprocess_audio(input_path, output_path=None, apply_filters=True):
@@ -32,6 +26,7 @@ def preprocess_audio(input_path, output_path=None, apply_filters=True):
     print("Loading audio for preprocessing...")
     # Load the audio file
     audio, sr = librosa.load(input_path, sr=None)
+
     if apply_filters:
         print("Applying audio enhancement filters...")
 
@@ -68,6 +63,34 @@ def preprocess_audio(input_path, output_path=None, apply_filters=True):
             print(f"Processed audio saved to {output_path}")
 
     return audio, sr
+
+
+def select_best_model(device):
+    """Select the best Whisper model based on available memory"""
+    if device == "cpu":
+        ram_gb = psutil.virtual_memory().available / (1024**3)
+        if ram_gb >= 16:
+            return "medium"
+        elif ram_gb >= 8:
+            return "small"
+        else:
+            return "tiny"
+    else:
+        if device == "cuda":
+            vram_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+        elif device == "mps":
+            vram_gb = psutil.virtual_memory().available / (1024**3)
+        else:
+            vram_gb = 8
+        
+        if vram_gb >= 10:
+            return "large"
+        elif vram_gb >= 6:
+            return "medium"
+        elif vram_gb >= 4:
+            return "small"
+        else:
+            return "tiny"
 
 
 # Initialize ArgParser so we can give a filename via CLI
@@ -109,31 +132,21 @@ try:
 
     # Perform transcription with Whisper
     print("Starting transcription...")
+    model_size = select_best_model(device)
+    print(f"Selected model: {model_size}")
     start_time = time.time()
-    print(f"Loading Whisper model for {device}...")
-    if device == "cpu":
-        start_time = time.time()
-        # Small modell to not overwhelm the CPU. Change at your own risk
-        model = whisper.load_model("small", device=device)
-        end_time = time.time()
-        load_time = end_time - start_time
-        # CPU processing with FP32, since FP16 usually is not available
-        print(f"Whisper model optimized for {device} loaded successfully in {load_time:.2f} seconds.")
-        result = model.transcribe(temp_processed_path, language="de", fp16=False)
-    else:
-        start_time = time.time()
-        # I only have an RTX 3080, so no "large" model for me, unless I want to wait 150% of the audio runtime
-        model = whisper.load_model("medium", device=device)
-        end_time = time.time()
-        load_time = end_time - start_time
-        print(f"Whisper model optimized for {device} loaded successfully in {load_time:.2f} seconds.")
-        result = model.transcribe(temp_processed_path, language="de", fp16=True)
+    model = whisper.load_model(model_size, device=device)
+    load_time = time.time() - start_time
+    print(f"Whisper model loaded in {load_time:.2f} seconds.")
+    
+    fp16 = device != "cpu"
+    result = model.transcribe(temp_processed_path, language="de", fp16=fp16)
     end_time = time.time()
     process_time = end_time - start_time
     text = result["text"]
     print(f"\nTranscription complete in {process_time:.2f} seconds:\n")
     runtime = time.time() - total_runtime
-    print(text + "\n")
+    print(text.replace('. ', '.\n') + "\n")
     print(f"\nTotal runtime: {runtime:.2f} seconds.")
 except Exception as e:
     print(f"Error during transcription: {e}")
